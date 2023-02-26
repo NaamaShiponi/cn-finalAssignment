@@ -12,23 +12,28 @@ dns_server_port = 5001
 app_server_address = 'localhost'
 app_server_port = 5002
 
-# Create a socket for the application server
-app_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-app_socket.bind((app_server_address, app_server_port))
-app_socket.listen()
+# Create a socket for the DNS server
+dns_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+dns_socket.bind((dns_server_address, dns_server_port))
+dns_socket.listen()
 
 while True:
     # Wait for a client to connect
-    client_socket, client_address = app_socket.accept()
+    client_socket, client_address = dns_socket.accept()
     print(f'New connection from {client_address}')
 
     # Receive a message from the client
     client_message = client_socket.recv(1024).decode()
     print(f'Received message from client: {client_message}')
 
-    # Send a response to the client
-    app_response = 'Hello client!'
-    client_socket.send(app_response.encode())
+    # Resolve the DNS query to the IP address of the application server
+    if client_message == 'www.example.com':
+        dns_response = app_server_address
+    else:
+        dns_response = 'Unknown domain'
+
+    # Send the IP address of the application server to the client
+    client_socket.send(dns_response.encode())
 
     # Close the connection to the client
     client_socket.close()

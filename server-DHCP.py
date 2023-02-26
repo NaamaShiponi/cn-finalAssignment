@@ -12,23 +12,23 @@ dns_server_port = 5001
 app_server_address = 'localhost'
 app_server_port = 5002
 
-# Create a socket for the application server
-app_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-app_socket.bind((app_server_address, app_server_port))
-app_socket.listen()
+# Create a socket for the DHCP server
+dhcp_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+dhcp_socket.bind((dhcp_server_address, dhcp_server_port))
+dhcp_socket.listen()
 
 while True:
     # Wait for a client to connect
-    client_socket, client_address = app_socket.accept()
+    client_socket, client_address = dhcp_socket.accept()
     print(f'New connection from {client_address}')
 
     # Receive a message from the client
     client_message = client_socket.recv(1024).decode()
     print(f'Received message from client: {client_message}')
 
-    # Send a response to the client
-    app_response = 'Hello client!'
-    client_socket.send(app_response.encode())
+    # Send the IP address of the DNS server to the client
+    dhcp_response = dns_server_address
+    client_socket.send(dhcp_response.encode())
 
     # Close the connection to the client
     client_socket.close()
