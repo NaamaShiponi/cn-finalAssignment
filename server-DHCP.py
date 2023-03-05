@@ -1,34 +1,89 @@
-import socket
+from scapy.all import *
+ip_pool = []
 
-# Define the DHCP server address and port
-dhcp_server_address = 'localhost'
-dhcp_server_port = 5000
+DNS_IP='10.10.20.105'
+class DHCPServer:
+    def __init__(self, interface, subnet):
+        self.interface = interface
+        self.subnet = subnet
 
-# Define the DNS server address and port
-dns_server_address = 'localhost'
-dns_server_port = 5001
+    def start(self):
+        # start the DHCP server and listen for incoming requests
+        sniff(prn=self.handle_dhcp_request, filter="udp and (port 67 or 68)", iface=self.interface)
 
-# Define the application server address and port
-app_server_address = 'localhost'
-app_server_port = 5002
+    def handle_dhcp_request(self, packet):
+        # handle incoming DHCP requests and send DHCP responses
+        if DHCP in packet and packet[DHCP].options[0][1] == 1: # DHCP Discover packet
+            print("Get Discover msg")  
+            client_mac = packet[Ether].src
+            requested_ip = get_available_ip()
+            if requested_ip is not None:
+                dhcp_offer = self.create_dhcp_offer(client_mac, requested_ip,DNS_IP)
+                print("offerIP ",dhcp_offer[0][BOOTP].yiaddr)
+                sendp(dhcp_offer)
+                
+        elif DHCP in packet and packet[DHCP].options[0][1] == 3: # DHCP Request packet
+            print("Get Request msg")
+            client_mac = packet[Ether].src
+            requested_ip = packet[BOOTP].yiaddr
+            dhcp_ack = self.create_dhcp_ack(client_mac, requested_ip)
+            sendp(dhcp_ack)
 
-# Create a socket for the DHCP server
-dhcp_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-dhcp_socket.bind((dhcp_server_address, dhcp_server_port))
-dhcp_socket.listen()
+    def create_dhcp_offer(self, client_mac, requested_ip,DNS_IP):
+        # create a DHCP Offer packet to send to the client
+        dhcp_offer = Ether(src=get_if_hwaddr(self.interface), dst="ff:ff:ff:ff:ff:ff")/\
+                     IP(src=self.subnet, dst="255.255.255.255")/\
+                     UDP(sport=67, dport=68)/\
+                     BOOTP(op=2, yiaddr=requested_ip, siaddr=self.subnet, chaddr=client_mac)/\
+                     DHCP(options=[("message-type", "offer"),
+                                    ("subnet_mask", "255.255.255.0"),
+                                    ("router", self.subnet),
+                                    ("name_server", DNS_IP),
+                                    ("lease_time", 86400),
+                                    "end"])
+        return dhcp_offer
 
-while True:
-    # Wait for a client to connect
-    client_socket, client_address = dhcp_socket.accept()
-    print(f'New connection from {client_address}')
+    def create_dhcp_ack(self, client_mac, requested_ip):
+        # create a DHCP ACK packet to send to the client
+        dhcp_ack = Ether(src=get_if_hwaddr(self.interface), dst="ff:ff:ff:ff:ff:ff")/\
+                   IP(src=self.subnet, dst="255.255.255.255")/\
+                   UDP(sport=67, dport=68)/\
+                   BOOTP(op=2, yiaddr=requested_ip, siaddr=self.subnet, chaddr=client_mac)/\
+                   DHCP(options=[("message-type", "ack"),
+                                  ("subnet_mask", "255.255.255.0"),
+                                  ("router", self.subnet),
+                                  ("name_server", self.subnet),
+                                  ("lease_time", 86400),
+                                  "end"])
+        return dhcp_ack
+    
+def get_available_ip():
+    subnet = "192.168.1."
+    for i in range(1, 255):
+        fleg=False
+        ip = subnet + str(i)
+        for ip_in_pool in ip_pool:
+            if ip==ip_in_pool:
+             fleg=True 
+        if fleg==False:  
+            result = os.system("arping -c 1 " + ip)
+            if result == 0:
+                continue
+            else:
+                ip_pool.append(ip)                
+                return ip
+    return None
 
-    # Receive a message from the client
-    client_message = client_socket.recv(1024).decode()
-    print(f'Received message from client: {client_message}')
+def main():
+    ip_DHCP = get_available_ip()
+    if ip_DHCP is not None:
+        print("Available DHCP ip:", ip_DHCP)
+        dhcp_server = DHCPServer(interface="wlp4s0", subnet=ip_DHCP)
+        dhcp_server.start()
 
-    # Send the IP address of the DNS server to the client
-    dhcp_response = dns_server_address
-    client_socket.send(dhcp_response.encode())
 
-    # Close the connection to the client
-    client_socket.close()
+    else:
+        print("No available IP found.")
+
+if __name__ == "__main__":
+    main()

@@ -1,39 +1,49 @@
+
+    
+    
+from scapy.all import *
 import socket
 
-# Define the DHCP server address and port
-dhcp_server_address = 'localhost'
-dhcp_server_port = 5000
+# Set up the DNS server address and port
+DNS_TABLE = {
+    'www.server-RUDP.com': '192.168.1.100',
+    'www.server-TCP.com': '192.168.1.101',
+}
 
-# Define the DNS server address and port
-dns_server_address = 'localhost'
-dns_server_port = 5001
+# Define a function to handle DNS queries
+def handle_dns_query(packet):
+    
+    # Extra))ct the DNS query from the packet
+    dns_query = packet[DNS]
 
-# Define the application server address and port
-app_server_address = 'localhost'
-app_server_port = 5002
-
-# Create a socket for the DNS server
-dns_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-dns_socket.bind((dns_server_address, dns_server_port))
-dns_socket.listen()
-
-while True:
-    # Wait for a client to connect
-    client_socket, client_address = dns_socket.accept()
-    print(f'New connection from {client_address}')
-
-    # Receive a message from the client
-    client_message = client_socket.recv(1024).decode()
-    print(f'Received message from client: {client_message}')
-
-    # Resolve the DNS query to the IP address of the application server
-    if client_message == 'www.example.com':
-        dns_response = app_server_address
+    # Extract the domain name from the query
+    domain_name = dns_query.qd.qname.decode('utf-8')[:-1]
+    print("domain_name",domain_name)
+    # Look up the IP address for the domain name
+    if domain_name in DNS_TABLE.keys():
+        ip_address = DNS_TABLE[domain_name]        
     else:
-        dns_response = 'Unknown domain'
+        try:
+            ip_address = socket.gethostbyname(domain_name)
+        except socket.gaierror:
+            ip_address="Unknown"
+    # Construct a DNS response packet
+    
+    dns_response = IP(dst=packet[IP].src, src=packet[IP].dst)/\
+                   UDP(dport=packet[UDP].sport, sport=packet[UDP].dport)/\
+                   DNS(id=dns_query.id, qr=1, qd=dns_query.qd,\
+                       an=DNSRR(rrname=domain_name+'.', type='A', ttl=86400, rdata=ip_address))
 
-    # Send the IP address of the application server to the client
-    client_socket.send(dns_response.encode())
+    # Send the response packet back to the client
+    send(dns_response, verbose=0)
+    
+def main():
+    print("DNS server listening to filter udp port 52")
+    # Set up a Sniffer to intercept DNS requests and handle them
+    sniff(filter='udp port 52 and udp[10] & 0x80 = 0', prn=handle_dns_query, iface='lo')
+    
+if __name__ == "__main__":
+    main()
+    
+    
 
-    # Close the connection to the client
-    client_socket.close()

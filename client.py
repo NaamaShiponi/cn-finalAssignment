@@ -1,56 +1,88 @@
-import socket
+from scapy.all import *
+import random
 
-# Define the DHCP server address and port
-dhcp_server_address = 'localhost'
-dhcp_server_port = 5000
+ip_client="0.0.0.0"
+# Construct the DHCP Discover packet
+mac_addr = "08:00:27:56:58:68" # MAC address of the client
+xid = random.randint(1, 100000) # Transaction ID
+DNS_SERVER_PORT = 52
+recvSize=1024
 
-# Define the DNS server port
-dns_server_port = 5001
+def create_dhcp_discover(mac_addr,xid):
+    dhcp_discover = Ether(dst="ff:ff:ff:ff:ff:ff", src=mac_addr)/\
+                IP(src="0.0.0.0", dst="255.255.255.255")/\
+                UDP(sport=68, dport=67)/\
+                BOOTP(chaddr=mac_addr, xid=xid)/\
+                DHCP(options=[("message-type", "discover"),
+                              "end"])
+    return dhcp_discover
 
-# Define the application server port
-app_server_port = 5002
+def create_dhcp_request(mac_addr,xid,ip_client):
+    dhcp_request = Ether(dst="ff:ff:ff:ff:ff:ff", src=mac_addr)/\
+                IP(src="0.0.0.0", dst="255.255.255.255")/\
+                UDP(sport=68, dport=67)/\
+                BOOTP(chaddr=mac_addr, xid=xid)/\
+                DHCP(options=[("message-type", "request"),
+                               ("server_id", "192.168.1.100"),
+                               ("requested_addr", ip_client),
+                               "end"])
+    return dhcp_request
+def create_dns_request(domain_name,DNS_SERVER_IP,DNS_SERVER_PORT):
+    # Construct a DNS query packet
+    dns_query = IP(dst=DNS_SERVER_IP)/\
+                UDP(dport=DNS_SERVER_PORT)/\
+                DNS(rd=1,qd=DNSQR(qname=domain_name))
 
-# Establish a connection to the DHCP server
-dhcp_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-dhcp_socket.connect((dhcp_server_address, dhcp_server_port))
+    # Send the query to the DNS server and wait for a response
+    return sr1(dns_query)
 
-# Send a message to the DHCP server
-client_message = 'Hello DHCP Server!'
-dhcp_socket.send(client_message.encode())
+    
 
-# Receive a response from the DHCP server with the IP address of the DNS server
-dhcp_response = dhcp_socket.recv(1024).decode()
 
-# Close the connection to the DHCP server
-dhcp_socket.close()
+def main():
+    #create dhcp discover packet
+    dhcp_discover= create_dhcp_discover(mac_addr,xid)
 
-# Establish a connection to the DNS server
-dns_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-dns_socket.connect((dhcp_response, dns_server_port))
+    # Send the DHCP Discover packet and wait for a response
+    sendp(dhcp_discover)
 
-# Send a message to the DNS server
-client_message = 'www.example.com'
-dns_socket.send(client_message.encode())
+    dhcp_discover = sniff(filter="udp and (port 67 or 68)",timeout=5, iface="wlp4s0")
 
-# Receive a response from the DNS server with the IP address of the application server
-dns_response = dns_socket.recv(1024).decode()
+    if len(dhcp_discover) > 0:
+        print("Received DHCP response:")
+        # dhcp_response[0].show()
+        ip_client = dhcp_discover[0][BOOTP].yiaddr
+        ip_dns=dhcp_discover[0][DHCP].options[3][1]
+        
+        print("offer IP fron dhcp ",ip_client)
 
-# Close the connection to the DNS server
-dns_socket.close()
+        print("dns ip ",ip_dns)
+    else:
+        print("No response received")
+        
 
-# Establish a connection to the application server
-app_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-app_socket.connect((dns_response, app_server_port))
+    # Construct the DHCP request packet
+    dhcp_request= create_dhcp_request(mac_addr,xid,ip_client)
 
-# Send a message to the application server
-client_message = 'Hello Application Server!'
-app_socket.send(client_message.encode())
+    # Send the DHCP request packet and wait for a response
+    sendp(dhcp_request)
 
-# Receive a response from the application server
-app_response = app_socket.recv(1024).decode()
+    dhcp_response = sniff(filter="udp and (port 67 or 68)", timeout=10, iface="wlp4s0")
 
-# Close the connection to the application server
-app_socket.close()
+    if len(dhcp_response) > 0:
+        print("Received DHCP response:")
+        dhcp_response[0].show()
+    else:
+        print("No response received")
 
-# Print the response from the application server
-print(app_response)
+    #get domain
+    domain_name = input("Enter the URL to lookup (e.g. www.server-RUDP.com/www.server-TCP.com): ")
+    response=create_dns_request(domain_name,ip_dns,DNS_SERVER_PORT)
+    # Extract the IP address from the response and print it
+    ip_address = response[DNS].an.rdata
+    print(f'{domain_name} has IP address: {ip_address}')
+ 
+   
+
+if __name__ == "__main__":
+    main()
