@@ -15,18 +15,16 @@ def handshake(sock):
     data, address = sock.recvfrom(1024)
     print(f'message client:{data}')
 
-def SendSizeFile(sock):
+def SendSizeFile(sock,file_size):
     # Message for get size of the file from client
     data, address = sock.recvfrom(1024)
     print(f'message client:{data} ')
 
-    # Check the size of the file
-    sizeFile=1
-    data=sizeFile.to_bytes(2, 'little', signed=False)
+    data=file_size.to_bytes(2, 'little', signed=False)
 
     # Send a response SYN to the client
     sock.sendto(data, address)
-    print(f'message server:  (PSH) Request size file:{sizeFile}')
+    print(f'message server:  (PSH) Request size file:{file_size}')
 
     
     # get AKE message from client
@@ -42,7 +40,16 @@ def main():
     sock.bind((app_server_address, app_server_port))
 
     handshake(sock)
-    SendSizeFile(sock)
+    
+    with open('example.txt', 'r') as f:
+        file_data = f.read()
+    
+    SendSizeFile(sock,len(file_data))
 
+
+
+
+
+    f.close()
 if __name__ == "__main__":
     main()
