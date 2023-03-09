@@ -7,10 +7,9 @@ from time import sleep
 
 # Constants
 IP_ADDRESS='localhost'
-PORT=5000
-address_server = (IP_ADDRESS,PORT)
+PORT=5001
 
-def createPackage(sock,packet_num,msg):
+def createAndSendPackage(sock, packet_num, msg, address_server):
     packet_num=packet_num.to_bytes(1, 'little', signed=False)
     sock.sendto(msg+packet_num,address_server)
 
@@ -63,13 +62,13 @@ def checkConnection(data, sock, packet_num, msg, last_ack):
     
     # Send last ACK
     if last_ack:
-        createPackage(sock,last_ack[0],last_ack[1])
+        createAndSendPackage(sock,last_ack[0],last_ack[1], address_server)
         sleep(0.5)
     
     for c in range(0,2):
              
         if not data:
-            createPackage(sock,packet_num+1,msg)
+            createAndSendPackage(sock, packet_num+1, msg, address_server)
             data, address_unchecked = receiveData(sock, packet_num+2)
         else:
             return data, address_unchecked 
@@ -80,10 +79,10 @@ def checkConnection(data, sock, packet_num, msg, last_ack):
     exit()
 
 
-def handshake(sock):
+def handshake(sock, address_server):
     # send SYN message to server
     message = b"(SYN) message from client"
-    createPackage(sock,1,message)
+    createAndSendPackage(sock, 1, message, address_server)
     print(f"message client:{message.decode()}, package number: 1")
     
     # receive SYN, ACK message from server
@@ -100,42 +99,69 @@ def handshake(sock):
 
     # send ACK message to server
     message = b"(ACK) Request from client"
-    createPackage(sock,packet_num+1,message)
+    createAndSendPackage(sock,packet_num+1,message, address_server)
     print(f"message client:{message.decode()}, package number: {packet_num+1}")
 
 
-def getSizeFile(sock):
+def getSizeFile(sock, address_server):
     # send DATA message for size file to server
     message = b"(DATA) message for the size of the file on the server"
-    createPackage(sock,4,message)
+    createAndSendPackage(sock, 4, message, address_server)
     last_ack = (4,message)
     print(f"message client:{message.decode()}, package number: 4")
 
     # receive DATA message size file from server
     # get DATA,ACK message from client
-    data_unchecked, address_unchecked = receiveData(sock,5)
+    data_unchecked, address_unchecked = receiveData(sock, 5)
 
     if not data_unchecked:
         data_unchecked, address_unchecked = checkConnection(data_unchecked, sock, 4, message, last_ack)
     data = data_unchecked
     address = address_unchecked
     sock.settimeout(None)
-    
+    ip, port = checkRedirection(sock, data, address_server)
     packet_num,data= getMsgAndPM(data)
-    # data=int.from_bytes(data, 'little', signed=False)
+    if ip:
+        return ip,port
     print(f"message server:(DATA,ACK) Request size file: {data.decode()}, package number: {packet_num}")
     
     # send ACK message to server
     message = b"(ACK) Request from client"
-    createPackage(sock,packet_num+1,message)
+    createAndSendPackage(sock, packet_num+1, message, address_server)
     print(f"message client:{message.decode()}, package number: {packet_num+1}")
+    return None, None
 
-    
-def main():
+def checkRedirection(sock, data, address_server):
+    packet_num,data= getMsgAndPM(data)
+    data=data.decode()
+    if "RED" in data:
+        print(f"message server:{data}, package number: {packet_num}")
+        data=data.split(" ")
+        ip_address=data[2]
+        port=data[3]
+        message = b"(ACK) Request from client"
+        createAndSendPackage(sock, packet_num+1, message, address_server)
+        print(f"message client:{message.decode()}, package number: {packet_num+1}")
+        return ip_address,int(port)
+    return None, None
+
+
+def startConv(sock, address_server):
     # create a UDP socket
+    handshake(sock, address_server)
+    return getSizeFile(sock, address_server)
+
+
+def main():
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)    
-    handshake(sock)
-    getSizeFile(sock)
+    address_server = (IP_ADDRESS,PORT)
+    ip, port = startConv(sock, address_server)
+    
+    while ip:
+        address_server = (ip, port)
+        print(f"open socket wish {ip} {port}") 
+        ip, port = startConv(sock, address_server)  
+             
     
     
 if __name__ == "__main__":

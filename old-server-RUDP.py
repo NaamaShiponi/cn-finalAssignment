@@ -2,9 +2,11 @@ import socket
 from scapy.all import *
 from time import sleep
 
+OLD_IP_ADDRESS='localhost'
+OLD_PORT=5001
+
 IP_ADDRESS='localhost'
 PORT=5000
-
 
 def createAndSendPackage(sock,packet_num,msg,address):
     packet_num=packet_num.to_bytes(1, 'little', signed=False)
@@ -55,7 +57,6 @@ def receiveData(sock, packet_num):
             sys.exit(1)       
         return received_data  
 
-
 def checkConnection(data, sock, packet_num, msg, address, last_ack):
     
     # Send last ACK
@@ -100,42 +101,41 @@ def handshake(sock):
     packet_num,data= getMsgAndPM(data)
     print(f'message client:{data.decode()}, package number: {packet_num}')
 
-
-def SendSizeFile(sock,file_size): 
-    # Message for get size of the file from client
+def sendRedirection(sock):
     data, address = sock.recvfrom(1024)
     packet_num,data= getMsgAndPM(data)
     print(f'message client:{data.decode()}, package number: {packet_num}')
-    
-    message = str(file_size).encode()
+
+
+    message=f"(RED),(ACK) redirection {IP_ADDRESS} {PORT}"
+    message=message.encode()
     createAndSendPackage(sock,packet_num+1,message, address)
     last_ack = (packet_num+1,message)
+    print(f"message server:{message.decode()}, package number: {packet_num+1}")
     
-    # Send a response SYN to the client
-    print(f'message server:(DATA,ACK) Request size file: {file_size}, package number: {packet_num+1}')
+    data_unchecked, address_unchecked = receiveData(sock,packet_num+2)
     
-    # get ACK message from client
-    data_unchecked, address_unchecked = receiveData(sock, packet_num+2)
-
     if not data_unchecked:
-        data_unchecked, address_unchecked = checkConnection(data_unchecked, sock, packet_num, message, address,last_ack)
+        data_unchecked, address_unchecked = checkConnection(data_unchecked, sock, packet_num, message, address_unchecked, last_ack)
     data = data_unchecked
     address = address_unchecked
     sock.settimeout(None)
-    
     packet_num,data= getMsgAndPM(data)
     print(f'message client:{data.decode()}, package number: {packet_num}')
-        
+
     
+
 def main():
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.bind((IP_ADDRESS, PORT))
+    sock.bind((OLD_IP_ADDRESS, OLD_PORT))
     handshake(sock)
+    sendRedirection(sock)
+    sock.close()
+
+
+
     
-    with open('example.txt', 'r') as f:
-        file_data = f.read()
     
-    SendSizeFile(sock,len(file_data))
 
 
 
