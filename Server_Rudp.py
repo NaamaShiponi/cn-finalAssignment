@@ -160,13 +160,15 @@ def window_slow_start(packets_in_window, packets_to_send):
 
     packets_to_send[0].sort()
     packets_in_window[0] = packets_in_window[0][:4]
+    for num in packets_in_window[0]:
+        packets_in_window[1][str(num)] = [0, 0]
 
     return ssthreshold
 
 
 def window_fast_recovery(packets_in_window, packets_in_send):
     ssthreshold = len(packets_in_window[0])
-    new_window_size = ssthreshold // 2
+    new_window_size = max(4, ssthreshold // 2)
     packets_in_window[0].sort()
     for pkt in packets_in_window[0][new_window_size:]:
         packets_in_send[0].append(pkt)
@@ -174,6 +176,8 @@ def window_fast_recovery(packets_in_window, packets_in_send):
 
     packets_in_send[0].sort()
     packets_in_window[0] = packets_in_window[0][:new_window_size]
+    for num in packets_in_window[0]:
+        packets_in_window[1][str(num)] = [0, 0]
 
     return ssthreshold
 
@@ -190,11 +194,12 @@ def increase_window(packets_in_window, packets_to_send, sock, address, status, s
             send_packet(packets_in_window, packets_to_send, str(packets_in_window[0][-1]), sock, address)
 
     else:  # 0 = AIMD
-        packets_in_window[0].append(packets_to_send[0][0])
-        packets_to_send[0].remove(packets_in_window[0][-1])
-        packets_in_window[1][str(packets_in_window[0][-1])] = [0, 0]
+        if len(packets_to_send[0]) > 0:
+            packets_in_window[0].append(packets_to_send[0][0])
+            packets_to_send[0].remove(packets_in_window[0][-1])
+            packets_in_window[1][str(packets_in_window[0][-1])] = [0, 0]
 
-        send_packet(packets_in_window, packets_to_send, str(packets_in_window[0][-1]), sock, address)
+            send_packet(packets_in_window, packets_to_send, str(packets_in_window[0][-1]), sock, address)
 
 
 def main():
@@ -217,6 +222,7 @@ def main():
         window_size = 4
         ssthreshold = 30
         ack_count = 0
+        timeout_shut_down = 0
         status = 0  # 0 = Slow_Start / 1 = AIMD
 
         packets_to_send = make_dictionary_from_file(file_data, packet_size)
@@ -231,12 +237,16 @@ def main():
             recv_packet = receive_packet(sock)
 
             if check_time_out(packets_in_window):
+                timeout_shut_down += 1
+                if timeout_shut_down == 3:
+                    break
                 print("check_time_out" + str(len(packets_in_window[0])))
                 ssthreshold = window_slow_start(packets_in_window, packets_to_send)
                 send_all_packet(packets_in_window, packets_to_send, sock, address)
                 status = 0
 
             if recv_packet != null:
+                timeout_shut_down = 0
                 ack_count += 1
                 need_fast_recovery = check_fast_recovery(packets_in_window, packets_to_send, recv_packet, sock, address)
                 if need_fast_recovery:
