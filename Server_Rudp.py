@@ -10,15 +10,15 @@ def handshake(sock):
     # SYN message from client
     data, address = sock.recvfrom(1024)
     print(f'message client:{data}')
-
-    # Send a response SYN to the client
-    response = "(SYN) Request from server"
-    sock.sendto(response.encode(), address)
-    print(f'message server:  {response}')
-
-    # get AKE message from client
-    data, address = sock.recvfrom(1024)
-    print(f'message client:{data}')
+    #
+    # # Send a response SYN to the client
+    # response = "(SYN) Request from server"
+    # sock.sendto(response.encode(), address)
+    # print(f'message server:  {response}')
+    #
+    # # get AKE message from client
+    # data, address = sock.recvfrom(1024)
+    # print(f'message client:{data}')
 
     return address
 
@@ -64,8 +64,10 @@ def send_all_packet(packets_in_window, packets_to_send, sock, address):
 
 
 def send_packet(packets_in_window, packets_to_send, packet_num, sock, address):
-    packets_in_window[1].get(packet_num)[0] = time.time()
-    sock.sendto(packets_to_send[1][packet_num], address)
+    print(packets_in_window[1])
+    print(packet_num)
+    packets_in_window[1].get(str(packet_num))[0] = time.time()
+    sock.sendto(packets_to_send[1][str(packet_num)], address)
 
 
 def receive_packet(sock):
@@ -126,8 +128,8 @@ def check_fast_recovery(packets_in_window, packets_to_send, recv_packet, sock, a
         for packet_num in packets_in_window[0]:
             if packet_num > int_packet_num_recv:
                 break
-            packets_in_window[1][packet_num][1] += 1
-            if packets_in_window[1][packet_num][1] == 3:
+            packets_in_window[1][str(packet_num)][1] += 1
+            if packets_in_window[1][str(packet_num)][1] == 3:
                 return True  # we have reached the stage of fast recovery
             send_packet(packets_in_window, packets_to_send, packet_num, sock, address)
 
@@ -145,7 +147,8 @@ def check_fast_recovery(packets_in_window, packets_to_send, recv_packet, sock, a
         return False  # we have not reached the stage of fast recovery
 
     else:
-        packets_to_send[0].remove(int(str_packet_num_recv))
+        if int_packet_num_recv in packets_to_send[0]:
+            packets_to_send[0].remove(int_packet_num_recv)
 
 
 def window_slow_start(packets_in_window, packets_to_send):
@@ -167,7 +170,7 @@ def window_fast_recovery(packets_in_window, packets_in_send):
     packets_in_window[0].sort()
     for pkt in packets_in_window[0][new_window_size:]:
         packets_in_send[0].append(pkt)
-        packets_in_window[1].pop(pkt)
+        packets_in_window[1].pop(str(pkt))
 
     packets_in_send[0].sort()
     packets_in_window[0] = packets_in_window[0][:new_window_size]
@@ -201,13 +204,14 @@ def main():
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.bind((app_server_address, app_server_port))
         sock.setblocking(True)
+        print("'localhost', 5000")
 
         with open('example.txt', 'rb') as f:
             file_data = f.read()
 
         address = handshake(sock)
 
-        SendSizeFile(sock, str(os.path.getsize('example.txt')).encode())
+        # SendSizeFile(sock, str(os.path.getsize('example.txt')).encode())
 
         packet_size = 1024
         window_size = 4
