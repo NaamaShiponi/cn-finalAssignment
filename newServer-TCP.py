@@ -4,6 +4,16 @@ import socket
 from scapy.layers.inet import IP, TCP
 from scapy.layers.l2 import Ether
 
+def build_packet(recv_pkt_from_client, str_to_send):
+    eth_pkt = Ether(src=recv_pkt_from_client[Ether].dst, dst=recv_pkt_from_client[Ether].src, type=recv_pkt_from_client[Ether].type)
+    ip_pkt = IP(dst=recv_pkt_from_client[IP].src, src=recv_pkt_from_client[IP].dst)
+    tcp_pkt = TCP(sport=recv_pkt_from_client[TCP].dport, dport=recv_pkt_from_client[TCP].sport, flags="SA")
+    http_pkt = Raw(load=str_to_send)
+    ryple_packet = eth_pkt / ip_pkt / tcp_pkt / http_pkt
+    # ryple_packet.show()
+
+    return ryple_packet
+
 # Create a TCP/IP socket
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
@@ -30,24 +40,23 @@ while True:
             pkt = connection.recv(1024)
             if pkt:
                 print(f"Received Packet:\n{pkt}")
-                # Process packet or reply with another packet
                 recv_pkt = Ether(pkt)
-                eth_pkt = Ether(src=recv_pkt[Ether].dst, dst=recv_pkt[Ether].src, type=recv_pkt[Ether].type)
-                ip_pkt = IP(dst=recv_pkt[IP].src, src=recv_pkt[IP].dst)
-                tcp_pkt = TCP(sport=recv_pkt[TCP].dport, dport=recv_pkt[TCP].sport, flags="SA")
-                http_pkt = Raw(load="HTTP/1.1 200 OK/\r\n\r\n")
-                reply = eth_pkt / ip_pkt / tcp_pkt / http_pkt
+
+                # create and send HTTP OK Response
+                str_raw = "HTTP/1.1 200 OK/\r\n\r\n"
+                reply = build_packet(recv_pkt, str_raw)
                 connection.sendall(raw(reply))
 
-                raw_pkt_len = Raw(load=str(len(file_data)))
-                len_file_reply = eth_pkt / ip_pkt / tcp_pkt / raw_pkt_len
-                connection.sendall(raw(len_file_reply))
-
+                # wait for ACK that the server recv the HTTPRe
                 pkt = connection.recv(1024)
 
-                raw_pkt_file = Raw(load=file_data)
-                file_reply = eth_pkt / ip_pkt / tcp_pkt / raw_pkt_file
-                connection.sendall(raw(file_reply))
+                # create and send the file
+                # file_reply = build_packet(recv_pkt, file_data)
+                connection.send(file_data.encode())
+                # end_file_reply = build_packet(recv_pkt, "END FILE")
+                print("END FILE")
+                end_file_reply = "END FILE"
+                connection.send(end_file_reply.encode())
 
             else:
                 print('No more data from', client_address)

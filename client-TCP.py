@@ -13,7 +13,6 @@ def create_packet(server_address):
 
 
 def create_ACK_packet(server_address):
-    http_payload = 'GET / HTTP/1.1\r\nHost: localhost\r\n\r\n'
     pkt = Ether(src='11:22:33:44:55:66', dst='aa:bb:cc:dd:ee:ff') / IP(src='localhost', dst=server_address[0]) / TCP(
         sport=1234, dport=server_address[1], flags="SA")
     return pkt
@@ -89,24 +88,43 @@ def main():
             new_address = extract_new_address(recv_pkt)
 
             if new_address is not None:
+
                 new_server_address, new_server_port = extract_new_address_and_port(new_address)
-                close_socket(sock, server_address)
+                close_socket(sock, server_address)  # close the old server
+
                 new_address = (new_server_address, int(new_server_port))
-                sock = connect_to_server(new_address)
+
+                sock = connect_to_server(new_address)  # open the new server
+
+                # make and send a HTTP GET Request
                 pkt = create_packet(server_address)
                 send_packet(sock, pkt, new_address)
-                recv_pkt = receive_packet(sock)
-                recv_pkt = receive_packet(sock)
-                ack_pkt = create_ACK_packet(server_address)
-                send_packet(sock, ack_pkt, new_address)
-                len_data = int(recv_pkt[Raw].load.decode())
-                recv_pkt = receive_packet(sock)
-                data = recv_pkt[Raw].load.decode()
 
-                while len(data) < len_data-42:
-                    recv_pkt = receive_packet(sock)
-                    data += recv_pkt[Raw].load.decode()
+                # recv and check status_code
+                recv_pkt = receive_packet(sock)
+                status_code = extract_status_code(recv_pkt)
+                if status_code == '200':
+                    # create and send ack packet for the size file
+                    ack_pkt = create_ACK_packet(server_address)
+                    send_packet(sock, ack_pkt, new_address)
+
+                print("bigen to recv file data")
+                reply1 = 0
+                file = open("new_file.txt", "w")
+
+                while True:
+                    print(str(reply1))
+                    reply = sock.recv(4096).decode()
+                    if "END FILE" in reply:
+                        # print(str(reply1))
+                        print("END FILE RECV")
+                        break
+                    reply1 += len(reply)
+                    file.write(reply)
+
                 print("finish")
+                file.close()
+
             else:
                 print("Could not extract new server address from HTTP response packet")
 
