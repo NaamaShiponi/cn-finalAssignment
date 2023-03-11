@@ -12,14 +12,14 @@ def handshake(sock):
     sock.sendto(message.encode(), address_server)
     print(f"message client: {message}")
 
-    # receive SYN message from server
-    data, address = sock.recvfrom(1024)
-    print(f"message server: {data.decode()}")
-
-    # send AKE message to server
-    message = "(AKE) Request from client"
-    sock.sendto(message.encode(), address_server)
-    print(f"message client: {message}")
+    # # receive SYN message from server
+    # data, address = sock.recvfrom(1024)
+    # print(f"message server: {data.decode()}")
+    #
+    # # send AKE message to server
+    # message = "(AKE) Request from client"
+    # sock.sendto(message.encode(), address_server)
+    # print(f"message client: {message}")
 
 
 def getSizeFile(sock):
@@ -50,7 +50,6 @@ def recv_packet(sock):
 
 
 def send_ack(sock, packet_num):
-
     message = '/' + str(packet_num)
     print("send massage = " + message)
     sock.sendto(message.encode(), address_server)
@@ -59,9 +58,10 @@ def send_ack(sock, packet_num):
 def main():
     # create a UDP socket
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    print("sock")
 
     handshake(sock)
-    getSizeFile(sock)
+    # getSizeFile(sock)
 
     file_size = 55336
     file_data = ''
@@ -76,11 +76,12 @@ def main():
 
         send_ack(sock, packet_num)
 
-    file_data = ''
-    for num in range(len(recv_packet_from_server.keys())):
-        file_data += recv_packet_from_server[str(num)]
+    file = open("file_recv_rudp.txt", "w")
 
-    print(f'finish to recv file, the file: {file_data}')
+    for num in range(len(recv_packet_from_server.keys())):
+        file.write(recv_packet_from_server[str(num)])
+
+    file.close()
 
 
 if __name__ == "__main__":
