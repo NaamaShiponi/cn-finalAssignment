@@ -1,2 +1,3 @@
 *.txt
 test-client-to-DNS.py
+test-server-DNS.py

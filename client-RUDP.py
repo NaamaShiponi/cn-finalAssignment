@@ -1,5 +1,5 @@
 # sudo tc qdisc add dev lo root netem loss 20%
-#sudo tc qdisc del dev lo root netem
+# sudo tc qdisc del dev lo root netem
 
 import socket
 from scapy.all import *
