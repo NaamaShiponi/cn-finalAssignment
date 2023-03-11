@@ -63,25 +63,22 @@ def main():
     handshake(sock)
     getSizeFile(sock)
 
-    file_size = 72721
+    file_size = 55336
     file_data = ''
 
     recv_packet_from_server = {}
 
-
     while len(file_data) < file_size:
-        print(f'len(file_data) = {len(file_data)}, file_size = {file_size}')
         packet_num, data = recv_packet(sock)
-        print(f'len(file_data) = {packet_num}, file_size = {data}')
         if recv_packet_from_server.get(packet_num) is None:
-            recv_packet_from_server[packet_num] = packet_num
+            recv_packet_from_server[packet_num] = data
             file_data += data
+
         send_ack(sock, packet_num)
 
     file_data = ''
-    for num in recv_packet_from_server.keys():
-        file_data += recv_packet_from_server[num]
-
+    for num in range(len(recv_packet_from_server.keys())):
+        file_data += recv_packet_from_server[str(num)]
 
     print(f'finish to recv file, the file: {file_data}')
 
