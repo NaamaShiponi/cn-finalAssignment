@@ -4,34 +4,33 @@
 from scapy.all import *
 import socket
 
-# Set up the DNS server address and port
-DNS_TABLE = {
-    'www.server-RUDP.com': '192.168.1.100',
-    'www.server-TCP.com': '192.168.1.101',
+# dictionary of addresses and IP
+DNS_IP_TABLE = {
+    'www.server-RUDP.com': 'localhost',
+    'www.server-TCP.com': 'localhost',
 }
 
-# Define a function to handle DNS queries
+# Function for checking data in a received package and sending an answer
 def handle_dns_query(packet):
-    
-    # Extra))ct the DNS query from the packet
-    dns_query = packet[DNS]
+   
+    print("Get DNS msg")
 
-    # Extract the domain name from the query
-    domain_name = dns_query.qd.qname.decode('utf-8')[:-1]
-    print("domain_name",domain_name)
+    # Take out the domain form the package
+    domain_name = packet[DNS].qd.qname.decode('utf-8')[:-1]
+    
     # Look up the IP address for the domain name
-    if domain_name in DNS_TABLE.keys():
-        ip_address = DNS_TABLE[domain_name]        
+    if domain_name in DNS_IP_TABLE.keys():
+        ip_address = DNS_IP_TABLE[domain_name]     
     else:
         try:
             ip_address = socket.gethostbyname(domain_name)
         except socket.gaierror:
             ip_address="Unknown"
-    # Construct a DNS response packet
-    
+            
+    # Create a DNS response packet wish IP for the domain
     dns_response = IP(dst=packet[IP].src, src=packet[IP].dst)/\
                    UDP(dport=packet[UDP].sport, sport=packet[UDP].dport)/\
-                   DNS(id=dns_query.id, qr=1, qd=dns_query.qd,\
+                   DNS(id=packet[DNS].id, qr=1, qd=packet[DNS].qd,\
                        an=DNSRR(rrname=domain_name+'.', type='A', ttl=86400, rdata=ip_address))
 
     # Send the response packet back to the client
@@ -39,7 +38,7 @@ def handle_dns_query(packet):
     
 def main():
     print("DNS server listening to filter udp port 52")
-    # Set up a Sniffer to intercept DNS requests and handle them
+    # Sniffer to intercept DNS requests and handle them
     sniff(filter='udp port 52 and udp[10] & 0x80 = 0', prn=handle_dns_query, iface='lo')
     
 if __name__ == "__main__":

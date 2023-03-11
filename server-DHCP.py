@@ -1,33 +1,38 @@
 from scapy.all import *
 ip_pool = []
 
-DNS_IP='10.10.20.105'
+DNS_IP='192.168.1.33'
+
 class DHCPServer:
+    
+    #Constractor for DHCP server
     def __init__(self, interface, subnet):
         self.interface = interface
         self.subnet = subnet
 
     def start(self):
-        # start the DHCP server and listen for incoming requests
+        # Start the DHCP server and listen for incoming requests in port 67 or 68
         sniff(prn=self.handle_dhcp_request, filter="udp and (port 67 or 68)", iface=self.interface)
 
     def handle_dhcp_request(self, packet):
-        # handle incoming DHCP requests and send DHCP responses
+        # Handle DHCP requests and send DHCP responses
         if DHCP in packet and packet[DHCP].options[0][1] == 1: # DHCP Discover packet
-            print("Get Discover msg")  
+            print("Get DHCP discover msg")  
             client_mac = packet[Ether].src
             requested_ip = get_available_ip()
             if requested_ip is not None:
                 dhcp_offer = self.create_dhcp_offer(client_mac, requested_ip,DNS_IP)
-                print("offerIP ",dhcp_offer[0][BOOTP].yiaddr)
                 sendp(dhcp_offer)
+                print(f"Send DNS offer msg wish offerIP: {dhcp_offer[0][BOOTP].yiaddr}")
                 
         elif DHCP in packet and packet[DHCP].options[0][1] == 3: # DHCP Request packet
-            print("Get Request msg")
+            print("Get DHCP request msg")
             client_mac = packet[Ether].src
             requested_ip = packet[BOOTP].yiaddr
             dhcp_ack = self.create_dhcp_ack(client_mac, requested_ip)
             sendp(dhcp_ack)
+            print(f"Send DNS ack msg to client")
+
 
     def create_dhcp_offer(self, client_mac, requested_ip,DNS_IP):
         # create a DHCP Offer packet to send to the client
@@ -57,6 +62,7 @@ class DHCPServer:
                                   "end"])
         return dhcp_ack
     
+#Find free ip in the local network 
 def get_available_ip():
     subnet = "192.168.1."
     for i in range(1, 255):
@@ -74,14 +80,14 @@ def get_available_ip():
                 return ip
     return None
 
+
 def main():
-    ip_DHCP = get_available_ip()
+    #get free ip for DHCP server
+    ip_DHCP = get_available_ip() 
     if ip_DHCP is not None:
         print("Available DHCP ip:", ip_DHCP)
         dhcp_server = DHCPServer(interface="wlp4s0", subnet=ip_DHCP)
         dhcp_server.start()
-
-
     else:
         print("No available IP found.")
 
