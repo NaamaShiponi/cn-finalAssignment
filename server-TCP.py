@@ -30,7 +30,6 @@ while True:
     while True:
         pkt = connection.recv(1024)
         if pkt:
-            print(f"Received Packet:\n{pkt}")
             # Process packet or reply with another packet
             recv_pkt = Ether(pkt)
             eth_pkt = Ether(src=recv_pkt[Ether].dst, dst=recv_pkt[Ether].src, type=recv_pkt[Ether].type)

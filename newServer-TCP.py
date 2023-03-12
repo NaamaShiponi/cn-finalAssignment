@@ -39,7 +39,6 @@ while True:
         while True:
             pkt = connection.recv(1024)
             if pkt:
-                print(f"Received Packet:\n{pkt}")
                 recv_pkt = Ether(pkt)
 
                 # create and send HTTP OK Response

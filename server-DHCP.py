@@ -1,7 +1,6 @@
+import socket
 from scapy.all import *
 ip_pool = []
-
-DNS_IP='192.168.1.33'
 
 class DHCPServer:
     
@@ -20,8 +19,9 @@ class DHCPServer:
             print("Get DHCP discover msg")  
             client_mac = packet[Ether].src
             requested_ip = get_available_ip()
+            
             if requested_ip is not None:
-                dhcp_offer = self.create_dhcp_offer(client_mac, requested_ip,DNS_IP)
+                dhcp_offer = self.create_dhcp_offer(client_mac, requested_ip)
                 sendp(dhcp_offer)
                 print(f"Send DNS offer msg wish offerIP: {dhcp_offer[0][BOOTP].yiaddr}")
                 
@@ -34,7 +34,8 @@ class DHCPServer:
             print(f"Send DNS ack msg to client")
 
 
-    def create_dhcp_offer(self, client_mac, requested_ip,DNS_IP):
+    def create_dhcp_offer(self, client_mac, requested_ip):
+        DNS_IP = "127.0.0.1"
         # create a DHCP Offer packet to send to the client
         dhcp_offer = Ether(src=get_if_hwaddr(self.interface), dst="ff:ff:ff:ff:ff:ff")/\
                      IP(src=self.subnet, dst="255.255.255.255")/\
@@ -62,6 +63,7 @@ class DHCPServer:
                                   "end"])
         return dhcp_ack
     
+        
 #Find free ip in the local network 
 def get_available_ip():
     subnet = "192.168.1."

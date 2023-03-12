@@ -1,3 +1,5 @@
 *.txt
 test-client-to-DNS.py
 test-server-DNS.py
+__pycache__/
+*.html

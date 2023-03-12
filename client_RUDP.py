@@ -63,7 +63,7 @@ def main():
     handshake(sock)
     # getSizeFile(sock)
 
-    file_size = 55336
+    file_size = 931905
     file_data = ''
 
     recv_packet_from_server = {}
