@@ -13,13 +13,13 @@ class TCPClient:
     def create_packet(self,server_address):
         http_payload = 'GET / HTTP/1.1\r\nHost: localhost\r\n\r\n'
         pkt = Ether(src='11:22:33:44:55:66', dst='aa:bb:cc:dd:ee:ff') / IP(src='localhost', dst=server_address[0]) / TCP(
-            sport=1234, dport=server_address[1]) / http_payload
+            sport=20314, dport=server_address[1]) / http_payload
         return pkt
 
 
     def create_ACK_packet(self,server_address):
         pkt = Ether(src='11:22:33:44:55:66', dst='aa:bb:cc:dd:ee:ff') / IP(src='localhost', dst=server_address[0]) / TCP(
-            sport=1234, dport=server_address[1], flags="SA")
+            sport=20314, dport=server_address[1], flags="SA")
         return pkt
 
 
@@ -69,6 +69,8 @@ class TCPClient:
 
     def connect_to_server(self,address):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        sock.bind(('localhost',20314))
         sock.connect(address)
         return sock
 

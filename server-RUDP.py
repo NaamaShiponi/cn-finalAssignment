@@ -3,7 +3,7 @@ from scapy.all import *
 from time import sleep
 
 IP_ADDRESS='localhost'
-PORT=5000
+PORT=31314
 
 class RUDPServer:
     def __init__(self):
@@ -301,7 +301,7 @@ class RUDPServer:
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.bind((IP_ADDRESS, PORT))
         sock.setblocking(True)
-        print("'localhost', 5000")
+        print("'localhost', 30314")
 
         address=self.handshake(sock)
         

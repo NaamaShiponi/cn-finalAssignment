@@ -64,7 +64,7 @@ class RUDPClient:
             return received_data  
 
 
-    def checkConnection(self,data, sock, packet_num, msg, last_ack):
+    def checkConnection(self,data, sock, packet_num, msg, last_ack,address_server):
         
         # Send last ACK
         if last_ack:
@@ -95,7 +95,7 @@ class RUDPClient:
         data_unchecked, address_unchecked = self.receiveData(sock,2)
 
         if not data_unchecked:
-            data_unchecked, address_unchecked = self.checkConnection(data_unchecked, sock, 0, message, None)
+            data_unchecked, address_unchecked = self.checkConnection(data_unchecked, sock, 0, message, None,address_server)
         data = data_unchecked
         address = address_unchecked
         sock.settimeout(None)
@@ -121,7 +121,7 @@ class RUDPClient:
         data_unchecked, address_unchecked = self.receiveData(sock, 5)
 
         if not data_unchecked:
-            data_unchecked, address_unchecked = self.checkConnection(data_unchecked, sock, 4, message, last_ack)
+            data_unchecked, address_unchecked = self.checkConnection(data_unchecked, sock, 4, message, last_ack,address_server)
         data = data_unchecked
         address = address_unchecked
         sock.settimeout(None)
@@ -176,6 +176,8 @@ class RUDPClient:
     def start(self):
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)    
         address_server = (self.IP_ADDRESS,self.PORT)
+        sock.bind(("127.0.0.1", 20314))
+
         ip, port, datd= self.startConv(sock, address_server)
         
         while ip:

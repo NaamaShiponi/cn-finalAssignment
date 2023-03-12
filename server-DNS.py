@@ -13,11 +13,11 @@ DNS_IP_TABLE = {
 # Function for checking data in a received package and sending an answer
 def handle_dns_query(packet):
    
-    print("Get DNS msg")
 
     # Take out the domain form the package
     domain_name = packet[DNS].qd.qname.decode('utf-8')[:-1]
-    
+    print(f"message client: DNS msg fo domain_name{domain_name}")
+
     # Look up the IP address for the domain name
     if domain_name in DNS_IP_TABLE.keys():
         ip_address = DNS_IP_TABLE[domain_name]     
@@ -35,7 +35,8 @@ def handle_dns_query(packet):
 
     # Send the response packet back to the client
     send(dns_response, verbose=0)
-    
+    print(f"message server: response DNS wish ip {ip_address}")
+
 def main():
     print("DNS server listening to filter udp port 52")
     # Sniffer to intercept DNS requests and handle them

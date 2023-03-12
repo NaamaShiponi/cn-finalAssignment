@@ -6,7 +6,7 @@ from clientDHCPAndDNS import DHCPAndDNSClient
 
 
 def tcpClient(ip_server, port_server):
-    tcp_client = TCPClient(ip_server, port_server)
+    tcp_client = TCPClient('localhost',30760)
     tcp_client.start()
 
 def rudoClient(ip_server, port_server):
@@ -21,11 +21,11 @@ def main():
     
     
     if "TCP" in (str)(domain_name):
-        port_server=9999
+        port_server=30760
         #Create the TCP server address
         tcpClient(ip_server, port_server)
     if "RUDP" in (str)(domain_name):
-        port_server=5001
+        port_server=31760
         #Create the RUDP server address
         rudoClient(ip_server, port_server)
 

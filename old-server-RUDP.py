@@ -3,10 +3,10 @@ from scapy.all import *
 from time import sleep
 
 OLD_IP_ADDRESS='localhost'
-OLD_PORT=5001
+OLD_PORT=31760 
 
 IP_ADDRESS='localhost'
-PORT=5000
+PORT=31314
 
 def createAndSendPackage(sock,packet_num,msg,address):
     packet_num=packet_num.to_bytes(1, 'little', signed=False)
@@ -128,6 +128,8 @@ def sendRedirection(sock):
 def main():
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.bind((OLD_IP_ADDRESS, OLD_PORT))
+    print(f"'localhost', {OLD_PORT}")
+
     handshake(sock)
     sendRedirection(sock)
     sock.close()

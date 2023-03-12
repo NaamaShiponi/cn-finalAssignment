@@ -16,9 +16,10 @@ def build_packet(recv_pkt_from_client, str_to_send):
 
 # Create a TCP/IP socket
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
 # Bind the socket to a specific IP address and port
-server_address = ('localhost', 9998)
+server_address = ('localhost', 30314)
 print('Starting up on {} port {}'.format(*server_address))
 sock.bind(server_address)
 
@@ -38,11 +39,15 @@ while True:
         # Receive the data in small chunks and retransmit it
         while True:
             pkt = connection.recv(1024)
+            print("message client: GET / HTTP/1.1\r\nHost: localhost")
+
             if pkt:
                 recv_pkt = Ether(pkt)
 
                 # create and send HTTP OK Response
                 str_raw = "HTTP/1.1 200 OK/\r\n\r\n"
+                print(f"message server: HTTP/1.1 200 OK/")
+
                 reply = build_packet(recv_pkt, str_raw)
                 connection.sendall(raw(reply))
 
@@ -52,10 +57,13 @@ while True:
                 # create and send the file
                 # file_reply = build_packet(recv_pkt, file_data)
                 connection.send(file_data.encode())
+                print("message server: all the file")
+
                 # end_file_reply = build_packet(recv_pkt, "END FILE")
-                print("END FILE")
                 end_file_reply = "END FILE"
                 connection.send(end_file_reply.encode())
+                print(f"message server: {end_file_reply}")
+
 
             else:
                 print('No more data from', client_address)
