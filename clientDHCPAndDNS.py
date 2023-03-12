@@ -62,7 +62,9 @@ class DHCPAndDNSClient:
                 ip_client = dhcp_discover[0][BOOTP].yiaddr
                 for name in dhcp_discover[0][DHCP].options:
                     if name[0]=="name_server":
-                        ip_dns=name[1]                          
+                        ip_dns=name[1]  
+                    else:       
+                        ip_dns='127.0.0.1'                 
                 # ip_dns=dhcp_discover[0][DHCP].options[3][1]
                 # name_server
 
