@@ -117,7 +117,7 @@ class TCPClient:
 
                     print("bigen to recv file data")
                     reply1 = 0
-                    file = open("new_file.txt", "w")
+                    file = open("file_recv_tcp.html", "w")
 
                     while True:
                         reply = sock.recv(4096).decode()
