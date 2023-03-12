@@ -50,22 +50,28 @@ class DHCPAndDNSClient:
 
         # Send the DHCP Discover packet and wait for a response
         sendp(dhcp_discover)
+        ip_client= None
+        ip_dns=None
+        
+        while not ip_dns:
+            dhcp_discover = sniff(filter="udp and (port 67 or 68)",timeout=3, iface="wlp4s0")
 
-        dhcp_discover = sniff(filter="udp and (port 67 or 68)",timeout=3, iface="wlp4s0")
+            if len(dhcp_discover) > 0:
+                print("Received DHCP response:")
+                # dhcp_response[0].show()
+                ip_client = dhcp_discover[0][BOOTP].yiaddr
+                for name in dhcp_discover[0][DHCP].options:
+                    if name[0]=="name_server":
+                        ip_dns=name[1]                          
+                # ip_dns=dhcp_discover[0][DHCP].options[3][1]
+                # name_server
 
-        if len(dhcp_discover) > 0:
-            print("Received DHCP response:")
-            # dhcp_response[0].show()
-            ip_client = dhcp_discover[0][BOOTP].yiaddr
-            ip_dns=dhcp_discover[0][DHCP].options[3][1]
+            else:
+                print("No response received")
             
-            print("offer IP fron dhcp ",ip_client)
+        print("offer IP fron dhcp ",ip_client)
 
-            print("dns ip ",ip_dns)
-        else:
-            print("No response received")
-            
-
+        print("dns ip ",ip_dns)
         # Construct the DHCP request packet
         dhcp_request= self.create_dhcp_request(mac_addr,xid,ip_client)
 

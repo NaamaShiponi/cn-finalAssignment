@@ -58,7 +58,6 @@ class DHCPServer:
                    DHCP(options=[("message-type", "ack"),
                                   ("subnet_mask", "255.255.255.0"),
                                   ("router", self.subnet),
-                                  ("name_server", self.subnet),
                                   ("lease_time", 86400),
                                   "end"])
         return dhcp_ack
